@@ -1,2 +1,3 @@
-# lpi-code.backrest_deploy
-Ansible collection to deply backrest and setup backup of containers
+# Ansible Collection - lpi_code.backrest_deploy
+
+Documentation for the collection.
