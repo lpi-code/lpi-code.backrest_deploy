@@ -86,27 +86,40 @@ restore_mysql() {
 restore_postgres() {
   echo "Starting PostgreSQL restore..."
 
-  # Copy the backup to the container
-  docker cp "$BACKUP_PATH" "$CONTAINER_NAME:/tmp/backup"
 
-  # Stop the PostgreSQL service before restoring
-  docker exec "$CONTAINER_NAME" pg_ctl stop -D /var/lib/postgresql/data || {
-    echo "Error: Failed to stop PostgreSQL service."
-    exit 1
-  }
+  echo "Stopping PostgreSQL service..."
+  docker stop "$CONTAINER_NAME"
 
-  # Remove existing data and restore from backup
-  docker exec "$CONTAINER_NAME" rm -rf /var/lib/postgresql/data/*
-  docker exec "$CONTAINER_NAME" cp -r /tmp/backup/* /var/lib/postgresql/data/
+  # Check mount type of /var/lib/postgresql/data
+  TEMP_CONTAINER_NAME="temp-restore-$(date +%s)"
+  IMAGE=$(docker inspect --format '{{ .Config.Image }}' "$CONTAINER_NAME")
+  MOUNT_TYPE=$(docker inspect --format '{{ range .Mounts }}{{ if eq .Destination "/var/lib/postgresql/data" }}{{ .Type }}{{ end }}{{ end }}' "$CONTAINER_NAME")
+  if [[ "$MOUNT_TYPE" == "volume" ]]; then
+    VOLUME_NAME=$(docker inspect --format '{{ range .Mounts }}{{ if eq .Destination "/var/lib/postgresql/data" }}{{ .Name }}{{ end }}{{ end }}' "$CONTAINER_NAME")
+    docker run -d --name "$TEMP_CONTAINER_NAME" --mount source="$VOLUME_NAME",target=/var/lib/postgresql/data -v "$BACKUP_PATH":/tmp/backup "$IMAGE" tail -f /dev/null
+  elif [[ "$MOUNT_TYPE" == "bind" ]]; then
+    VOLUME_PATH=$(docker inspect --format '{{ range .Mounts }}{{ if eq .Destination "/var/lib/postgresql/data" }}{{ .Source }}{{ end }}{{ end }}' "$CONTAINER_NAME")
+    docker run -d --name "$TEMP_CONTAINER_NAME" -v "$VOLUME_PATH":/var/lib/postgresql/data -v "$BACKUP_PATH":/tmp/backup "$IMAGE" tail -f /dev/null
+  fi
 
-  # Fix ownership
-  docker exec "$CONTAINER_NAME" chown -R postgres:postgres /var/lib/postgresql/data
 
-  # Start the PostgreSQL service
-  docker exec "$CONTAINER_NAME" pg_ctl start -D /var/lib/postgresql/data || {
-    echo "Error: Failed to start PostgreSQL service."
-    exit 1
-  }
+  # Remove existing data
+  docker exec "$TEMP_CONTAINER_NAME" rm -rf /var/lib/postgresql/data/*
+
+  # Restore the backup using pg_restore
+  # Restore the backup using pg_basebackup
+  docker exec "$TEMP_CONTAINER_NAME" sh -c "cp -r /tmp/backup/* /var/lib/postgresql/data/"
+
+    # Fix ownership
+  docker exec "$TEMP_CONTAINER_NAME" chown -R postgres:postgres /var/lib/postgresql/data
+
+  # Stop the temporary container
+  docker stop "$TEMP_CONTAINER_NAME"
+  docker rm "$TEMP_CONTAINER_NAME"
+  
+  echo "Starting PostgreSQL service..."
+  docker start "$CONTAINER_NAME"
+
 
   echo "PostgreSQL restore completed successfully."
 }

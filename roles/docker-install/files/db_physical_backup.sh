@@ -109,6 +109,10 @@ backup_postgres() {
     exit 1
   }
 
+  # Move file up one level
+  mv "${BACKUP_DIR}/backup/"/* "${BACKUP_DIR}/"
+  rmdir "${BACKUP_DIR}/backup"
+
   echo "PostgreSQL backup completed successfully."
 }
 
