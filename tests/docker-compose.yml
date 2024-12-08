@@ -22,5 +22,28 @@ services:
        WORDPRESS_DB_HOST: wordpress_db:3306
        WORDPRESS_DB_USER: wordpress
        WORDPRESS_DB_PASSWORD: wordpress
+   wordpress_maridb:
+      depends_on:
+        - wordpress_mariadb_db
+      image: wordpress:latest
+      ports:
+        - "8001:80"
+      restart: always
+      environment:
+        WORDPRESS_DB_HOST: wordpress_mariadb_db:3306
+        WORDPRESS_DB_USER: wordpress
+        WORDPRESS_DB_PASSWORD: wordpress
+   wordpress_mariadb_db:
+      image: mariadb:latest
+      volumes:
+        - mariadb_data:/var/lib/mysql
+      restart: always
+      environment:
+        MYSQL_ROOT_PASSWORD: somewordpress
+        MYSQL_DATABASE: wordpress
+        MYSQL_USER: wordpress
+        MYSQL_PASSWORD: wordpress
+    
 volumes:
     db_data:
+    mariadb_data:
