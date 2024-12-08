@@ -5,12 +5,22 @@ import subprocess
 import re
 import yaml
 import json
+import sys
 
 def get_running_containers():
     """Fetch the list of running Docker containers with their image names."""
     try:
+        containers = subprocess.run(
+            ["docker", "ps", "-q"],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        container_ids = containers.stdout.strip().split("\n") if containers.stdout else []
+
         result = subprocess.run(
-            ["docker", "ps", "--format", "{{.Names}} {{.Image}}"],
+            # get image id and tag
+            ["docker", "inspect", "--format", "'{{.Name}} {{.Config.Image}} {{.Id}}'", *container_ids],
             capture_output=True,
             text=True,
             check=True
@@ -97,12 +107,16 @@ def main():
     databases = []
     for entry in containers:
         if entry:
-            container_name, image_name = entry.split(maxsplit=1)
+            container_name, image_name, image_id = entry.split(' ')
+            image = {
+                'name': image_name,
+                'id': image_id
+            }
             container_type = identify_type(image_name)
             if container_type != 'unknown':
                 env_vars = get_env_variables(container_name)
                 master_user, master_password = get_credentials(env_vars, container_type)
-                databases.append({'name': container_name, 'type': container_type, 'image': image_name, 'master_user': master_user, 'master_password': master_password})
+                databases.append({'name': container_name, 'type': container_type, 'image': image, 'master_user': master_user, 'master_password': master_password})
 
     result_data = {'databases': databases}
     yaml_output = yaml.dump(result_data, default_flow_style=False, sort_keys=False)
