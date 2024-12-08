@@ -36,4 +36,7 @@
 	// Set the mount point for the workspace in the container.
 	"workspaceMount": "source=${localWorkspaceFolder},target=/ansible/collections/ansible_collections/lpi_code/backrest_deploy,type=bind",
 	"workspaceFolder": "/ansible/collections/ansible_collections/lpi_code/backrest_deploy",
+	"containerEnv": {
+		"ANSIBLE_COLLECTIONS_PATHS": "/ansible/collections/ansible_collections"
+	}
 }
