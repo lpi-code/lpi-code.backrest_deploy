@@ -37,15 +37,19 @@ restore_mariadb() {
   # Copy the backup to the container
   docker cp "$BACKUP_PATH" "$CONTAINER_NAME:/tmp/backup"
 
+  # Remove existing data
+  echo "Removing existing MariaDB data..."
+  docker exec "$CONTAINER_NAME" bash -c 'rm -rf /var/lib/mysql/* /var/lib/mysql/.[!.]*'
+
   # Prepare and restore the backup
   docker exec -e MYSQL_PWD="$DB_PASSWORD" "$CONTAINER_NAME" \
-    mariabackup --prepare --target-dir="/tmp/backup" || {
+    mariadb-backup --prepare --target-dir="/tmp/backup" || {
     echo "Error: MariaDB prepare step failed."
     exit 1
   }
 
   docker exec -e MYSQL_PWD="$DB_PASSWORD" "$CONTAINER_NAME" \
-    mariabackup --copy-back --target-dir="/tmp/backup" || {
+    mariadb-backup --copy-back --target-dir="/tmp/backup" || {
     echo "Error: MariaDB restore step failed."
     exit 1
   }

@@ -32,26 +32,48 @@ fi
 
 # Generate a timestamp for the backup
 BACKUP_DIR="${BACKUP_PATH}"
+TMP_CONTAINER_DIR="/tmp/backup"
+
 # clean up the backup directory
-rm "$BACKUP_DIR"/..?* "$BACKUP_DIR"/.[!.]* "$BACKUP_DIR"/* 2>/dev/null || true
+rm -rf "$BACKUP_DIR"/..?* "$BACKUP_DIR"/.[!.]* "$BACKUP_DIR"/* 2>/dev/null || true
 
 
 # Create the backup directory
 mkdir -p "$BACKUP_DIR"
 
+
+cleanup_tmp_dir() {
+  # Remove the temporary directory in the container
+  echo "Removing temporary directory in container..."
+  docker exec "$CONTAINER_NAME" rm -rf "$TMP_CONTAINER_DIR" || true
+}
+
+mkdir_container_tmp() {
+  # Remove existing data
+  echo "Removing existing data in temporary directory..."
+  cleanup_tmp_dir
+  
+  # Create a temporary directory in the container
+  docker exec "$CONTAINER_NAME" mkdir -p "$TMP_CONTAINER_DIR"
+}
+
 # Function to back up MariaDB
 backup_mariadb() {
   echo "Starting MariaDB physical backup..."
   docker exec -e MYSQL_PWD="$DB_PASSWORD" "$CONTAINER_NAME" \
-    mariabackup --backup --user="$DB_USER" --target-dir="/tmp/backup" || {
+    mariadb-backup --backup --user="$DB_USER" --target-dir="$TMP_CONTAINER_DIR" || {
     echo "Error: MariaDB backup command failed."
     exit 1
   }
 
-  docker cp "${CONTAINER_NAME}:/tmp/backup" "${BACKUP_DIR}" || {
+  docker cp "${CONTAINER_NAME}:$TMP_CONTAINER_DIR/" "${BACKUP_DIR}" || {
     echo "Error: Failed to copy backup from container."
     exit 1
   }
+
+  # Move file up one level
+  mv "${BACKUP_DIR}/backup"/* "${BACKUP_DIR}/"
+  rmdir "${BACKUP_DIR}/backup"
 
   echo "MariaDB backup completed successfully."
 }
@@ -77,12 +99,12 @@ backup_mysql() {
 backup_postgres() {
   echo "Starting PostgreSQL physical backup..."
   docker exec -e PGPASSWORD="$DB_PASSWORD" "$CONTAINER_NAME" \
-    pg_basebackup -D "/tmp/backup" -Fp -Xs -P -U "$DB_USER" || {
+    pg_basebackup -D "$TMP_CONTAINER_DIR" -Fp -Xs -P -U "$DB_USER" || {
     echo "Error: PostgreSQL backup command failed."
     exit 1
   }
 
-  docker cp "${CONTAINER_NAME}:/tmp/backup" "${BACKUP_DIR}" || {
+  docker cp "${CONTAINER_NAME}:$TMP_CONTAINER_DIR" "${BACKUP_DIR}" || {
     echo "Error: Failed to copy backup from container."
     exit 1
   }
@@ -93,13 +115,19 @@ backup_postgres() {
 # Perform the backup based on the database type
 case "$DB_TYPE" in
   mariadb)
+    mkdir_container_tmp
     backup_mariadb
+    cleanup_tmp_dir
     ;;
   mysql)
+    mkdir_container_tmp
     backup_mysql
+    cleanup_tmp_dir
     ;;
   postgres)
+    mkdir_container_tmp
     backup_postgres
+    cleanup_tmp_dir
     ;;
   *)
     echo "Error: Unsupported database type '${DB_TYPE}'. Supported types are mariadb, mysql, and postgres."
