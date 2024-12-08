@@ -1,0 +1,19 @@
+- name: Gather running Docker containers and output as YAML
+  hosts: localhost
+  pre_tasks:
+    - name: Set ansible_python_interpreter to python3
+      set_fact:
+        ansible_python_interpreter: /usr/bin/python3
+    - name: Install Docker sdk and PyYAML using pip
+      pip:
+        name:
+          - docker
+          - pyyaml
+        state: present
+  tasks:
+    - name: Get running containers and display in stdout
+      lpi_code.backrest_deploy.docker_databases_facts:
+    
+    - name: Get running containers and save to a file
+      lpi_code.backrest_deploy.docker_databases_facts:
+        output: /tmp/containers.yaml
