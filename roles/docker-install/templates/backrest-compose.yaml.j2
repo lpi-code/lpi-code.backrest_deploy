@@ -1,0 +1,46 @@
+version: "3.2"
+services:
+  backrest:
+    image: lpicode/backrest-docker:latest
+    container_name: backrest
+    hostname: backrest #Use this to set the hostname instead of container ID to the config.json and WebUI.
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - backrest/data:/data:rw
+      - backrest/config:/config:rw
+      - backrest/cache:/cache:rw
+      - backrest/ssh:/root/.ssh:rw
+{% for plan in plans.items() -%}
+{% for container in plan[1]['containers'].items() -%}
+{% for volume in container[1]['named_volumes'] -%}
+{% if not container[1]['database'] is defined or not container[1]['database'] %}
+      - {{ volume }}:/backup/{{ plan[0] }}/{{ volume }}
+{% endif -%}
+{% endfor -%}
+{% endfor -%}
+{% for other_path in plan[1]['other_paths'] %}
+      - {{ other_path }}:/backup/{{ plan[0] }}/other_{{ other_path }}
+{% endfor -%}
+{% endfor %}
+
+    environment:
+      - BACKREST_DATA=/data # path for backrest data. restic binary and the database are placed here.
+      - BACKREST_CONFIG=/config/config.json # path for the backrest config file.
+      - XDG_CACHE_HOME=/cache # path for the restic cache which greatly improves performance.
+    restart: unless-stopped
+    ports:
+      - 9898:9898
+    user: root:root
+
+volumes:
+    backrest:
+{% for plan in plans.items() -%}
+{% for container in plan[1]['containers'].items() -%}
+{% if 'named_volumes' in container[1] -%}
+{% for volume in container[1]['named_volumes'] %}
+    {{ volume }}:
+      external: true
+{% endfor -%}
+{% endif -%}
+{% endfor -%}
+{% endfor -%}
