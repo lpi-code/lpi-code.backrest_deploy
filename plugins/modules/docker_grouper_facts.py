@@ -91,11 +91,17 @@ def group_services(containers):
                 "named_volumes": named_volumes
             })
             processed.add(related["name"])
+        # remove duplicates containers (based on name)
+        for container in containers_info:
+            if container["name"] in processed:
+                containers_info.remove(container)
 
         services.append({
             "title": service_name,
             "containers": containers_info
         })
+
+    
 
     return services
 

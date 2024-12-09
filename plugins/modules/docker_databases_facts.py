@@ -78,11 +78,13 @@ def get_credentials(env_vars, container_type):
         'mysql': 'MYSQL_PASSWORD',
         'mongodb': 'MONGO_INITDB_ROOT_PASSWORD',
         'redis': 'REDIS_PASSWORD',
-        "mariadb": 'MYSQL_PASSWORD'
+        "mariadb": 'MYSQL_ROOT_PASSWORD'
     }
 
     master_user = env_vars.get(user_vars.get(container_type, ''), None)
     master_password = env_vars.get(password_vars.get(container_type, ''), None)
+    if container_type == 'mariadb':
+        master_user = 'root'
     return master_user, master_password
 
 
@@ -104,10 +106,11 @@ def main():
         module.exit_json(changed=False, msg="No running Docker containers found.", databases=[])
 
     # Generate structured data
-    databases = []
+    databases = {}
     for entry in containers:
         if entry:
             container_name, image_name, image_id = entry.split(' ')
+            container_name = container_name.replace('/', '').replace("'", '')
             image = {
                 'name': image_name,
                 'id': image_id
@@ -116,10 +119,14 @@ def main():
             if container_type != 'unknown':
                 env_vars = get_env_variables(container_name)
                 master_user, master_password = get_credentials(env_vars, container_type)
-                databases.append({'name': container_name, 'type': container_type, 'image': image, 'master_user': master_user, 'master_password': master_password})
-
-    result_data = {'databases': databases}
-    yaml_output = yaml.dump(result_data, default_flow_style=False, sort_keys=False)
+                databases[container_name] = {
+                    'image': image,
+                    'type': container_type,
+                    'master_user': master_user,
+                    'master_password': master_password
+                }
+    
+    yaml_output = yaml.dump(databases, default_flow_style=False, sort_keys=False)
 
     # Output to file or return as result
     if output_file:
