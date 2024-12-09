@@ -46,9 +46,31 @@
   vars:
     repos: "{{ repos }}"
 
+- name: List all containers
+  community.docker.docker_host_info:
+    containers: true
+  register: docker_containers
+
+- name: Find exact backrest container
+  set_fact:
+    backrest_container: "{{ item }}"
+  with_items: "{{ docker_containers.containers }}"
+
+  when: item.Image == "lpicode/backrest-docker:latest"
 - name: Copy config inside the container
   community.docker.docker_container_copy_into:
     path: /opt/backrest/tmp_config.json
     container_path: /config/config.json
-    container: backrest
-    
+    container: "{{ backrest_container.Id }}"
+
+- name: Restart the backrest container
+  community.docker.docker_container:
+    name: "{{ backrest_container.Id }}"
+    state: stopped
+  when: backrest_container is defined
+
+- name: Restart the backrest container
+  community.docker.docker_container:
+    name: "{{ backrest_container.Id }}"
+    state: started
+  when: backrest_container is defined
