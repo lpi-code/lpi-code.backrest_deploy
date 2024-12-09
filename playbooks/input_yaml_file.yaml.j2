@@ -1,0 +1,80 @@
+# This is the sample input file for the docker-install role
+
+general:
+  domain: {{ domain | default('backup.example.com') }}
+
+hooks:
+  telegram:
+    shoutrrr_url: telegram://bot_token/chat_id
+  discord:
+    shoutrrr_url: discord://webhook_url
+
+policy:
+  long_term: # Arbitrary name
+    hourly: 24
+    daily: 7
+    weekly: 4
+    monthly: 12
+    yearly: 0
+  short_term:
+    hourly: 24
+    daily: 7
+    weekly: 4
+    monthly: 12
+    yearly: 5
+
+schedule:
+  daily_1am: # Arbitrary name
+    cron: "0 1 * * *"
+  weekly_monday_1am:
+    cron: "0 1 * * 1"
+
+repos:
+  amazonS3_Europe:
+    user: "user"
+    password: "password" # Encryption password
+    uri: "s3://s3.eu-central-003.backblazeb2.com/mybucket"
+    env:
+      AWS_REGION: eu-central-003
+      AWS_DEFAULT_REGION: eu-central-003
+      AWS_ACCESS_KEY_ID: 0123456789ABCDEF
+      AWS_SECRET_ACCESS_KEY: 0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF
+    hooks:
+      error:
+        - telegram
+        - discord
+      success:
+        - telegram
+
+plans:
+{% for service in services %}
+  {{service['title']}}: # Arbitrary name
+
+    schedule: daily_1am
+    policy: long_term
+    repos:
+      - amazonS3_Europe
+    containers: # List of containers to backup images
+{% for container in service['containers'] %}
+      {{container['name']}}:
+        gzip: false
+        named_volumes:
+{% for volume in container['named_volumes'] %}
+          - {{volume}}
+{% endfor %}
+{% if container['name'] in databases %}
+        database:
+          type: {{databases[container['name']]['type']}}
+          user: {{databases[container['name']]['master_user']}}
+          password: {{databases[container['name']]['master_password']}}
+{% endif %}
+{% endfor %}
+    other_paths: []
+    excludes: [] # List of paths to exclude from backup
+    hooks: # You might not want to set up different hooksfor every backup, use hooks on repos instead
+      error: []
+      success: []
+{%endfor%}
+    
+
+
