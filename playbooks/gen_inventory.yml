@@ -13,8 +13,18 @@
   tasks:
     - name: Get running containers and display in stdout
       lpi_code.backrest_deploy.docker_databases_facts:
+      register: databases
 
     - name: Get grouped_containers
       lpi_code.backrest_deploy.docker_grouper_facts:
-
-      
+      register: grouped_containers
+    
+    - name: set facts
+      set_fact:
+        databases: "{{ databases['databases'] }}"
+        services: "{{ grouped_containers['services'] }}"
+    
+    - name: Template input_yaml_file.yaml
+      template:
+        src: input_yaml_file.yaml.j2
+        dest: input_yaml_file.yaml
