@@ -13,9 +13,8 @@
   tasks:
     - name: Get running containers and display in stdout
       lpi_code.backrest_deploy.docker_databases_facts:
-    
-    - name: Get running containers and save to a file
-      lpi_code.backrest_deploy.docker_databases_facts:
-        output: /tmp/containers.yaml
+
     - name: Get grouped_containers
       lpi_code.backrest_deploy.docker_grouper_facts:
+
+      

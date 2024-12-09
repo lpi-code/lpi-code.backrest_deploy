@@ -1,0 +1,54 @@
+---
+# tasks file for compose-install
+
+- name: Install docker if not already installed
+  include_role:
+    name: geerlingguy.docker
+    tasks_from: install
+  when: docker_install_docker_need_install
+
+- name: Make /opt/backrest directory
+  file:
+    dest: /opt/backrest
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+- name: Template the docker-compose file
+  template:
+    src: backrest-compose.yaml.j2
+    dest: /opt/backrest/docker-compose.yaml
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Start the backrest container compose
+  community.docker.docker_compose_v2:
+    project_src: /opt/backrest
+    state: present
+    recreate: auto
+  when: docker_install_mode == "compose"
+
+- name: Start the backrest container stack
+  community.docker.docker_stack:
+    state: present
+    composefiles:
+      - /opt/backrest/docker-compose.yaml
+  when: docker_install_mode == "stack"
+
+- name: Template config to /opt/backrest/tmp_config.json
+  ansible.builtin.template:
+    src: backrest-config.json.j2
+    dest: /opt/backrest/tmp_config.json
+    owner: root
+    group: root
+    mode: "0644"
+  vars:
+    repos: "{{ repos }}"
+
+- name: Copy config inside the container
+  community.docker.docker_container_copy_into:
+    path: /opt/backrest/tmp_config.json
+    container_path: /config/config.json
+    container: backrest
+    

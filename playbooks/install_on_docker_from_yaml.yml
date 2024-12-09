@@ -1,0 +1,38 @@
+- name: Gather running Docker containers and output as YAML
+  hosts: all
+  pre_tasks:
+    - name: Load facts from yaml
+      include_vars: "{{input_yaml_file}}"
+    
+    - name: Set ansible_python_interpreter to python3
+      set_fact:
+        ansible_python_interpreter: /usr/bin/python3
+    
+    - name: Install Docker sdk and PyYAML using pip
+      pip:
+        name:
+          - docker==6.1.3
+          - pyyaml
+          - requests==2.29.0
+          - docker-compose
+        state: present
+
+    - name: Check if docker is in path
+      command: docker --version
+      register: docker_version
+      failed_when: docker_version.rc != 0
+      changed_when: false
+
+    - name: Detect if docker is in swarm mode
+      command: docker info --format '{{ "{{.Swarm.LocalNodeState}}" }}'
+      register: docker_swarm
+      failed_when: docker_swarm.rc != 0
+      changed_when: false
+
+    - name: Set docker need install 
+      set_fact:
+        docker_install_docker_need_install: "{{ docker_version.rc != 0 }}"
+        docker_install_mode: "{{ 'swarm' if docker_swarm.stdout == 'active' else 'compose' }}"
+
+  roles:
+    - role: lpi_code.backrest_deploy.docker_install

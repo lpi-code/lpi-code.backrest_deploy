@@ -37,6 +37,6 @@
 	"workspaceMount": "source=${localWorkspaceFolder},target=/ansible/collections/ansible_collections/lpi_code/backrest_deploy,type=bind",
 	"workspaceFolder": "/ansible/collections/ansible_collections/lpi_code/backrest_deploy",
 	"containerEnv": {
-		"ANSIBLE_COLLECTIONS_PATHS": "/ansible/collections/ansible_collections"
+		"ANSIBLE_COLLECTIONS_PATHS": "/ansible/collections/ansible_collections:/home/vscode/.ansible/collections/ansible_collections"
 	}
 }

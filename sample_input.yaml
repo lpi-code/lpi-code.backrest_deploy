@@ -45,7 +45,6 @@ repos:
         - discord
       success:
         - telegram
-
 plans:
   wordpress_1: # Arbitrary name
     schedule: daily_1am
@@ -62,10 +61,12 @@ plans:
           type: mariadb
           user: backup
           password: backuppwd
+        named_volumes: []
     containers_db: # List of containers to backup databases (using custom scripts)
       - wordpress_mariadb_db
     other_paths:
       - /opt/wordpress_data
+    excludes: [] # List of paths to exclude from backup
     hooks: # You might not want to set up different hooksfor every backup, use hooks on repos instead
       error:
         - telegram

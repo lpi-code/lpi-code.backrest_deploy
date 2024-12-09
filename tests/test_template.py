@@ -7,7 +7,7 @@ import sys
 import traceback
 
 SAMPLE_YAML = "sample_input.yaml"
-TEMPLATE_DIR = "roles/docker-install/templates"
+TEMPLATE_DIR = "roles/docker_install/templates"
 TEMPLATES = [
     "backrest-compose.yaml.j2",
     "backrest-config.json.j2"

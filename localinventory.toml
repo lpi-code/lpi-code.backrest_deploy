@@ -1,0 +1,2 @@
+[all]
+local ansible_connection=local ansible_become=true

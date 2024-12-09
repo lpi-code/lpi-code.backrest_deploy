@@ -49,9 +49,10 @@
   ],
   "plans": [
     {% for plan in plans.items() -%}
+    {%for repo in plan.1['repos']-%}
     {
       "id": "{{ plan.0 }}",
-      "repo": "{{ plan.1['repo'] }}",
+      "repo": "{{ repo.0 }}",
       "paths": [
         "/backup/{{plan.0}}"
       ],
@@ -93,25 +94,35 @@
           ],
           "onError": "ON_ERROR_FATAL",
           "actionCommand": {
-            "command": "/docker_scripts/docker_container_backup.py {{ container.0 }} /backup/{{ plan.0 }}/{{ container.0 }} {{ '--gzip' if container.1['gzip'] else '' }}"
+            "command": "/docker_scripts/docker_container_backup.py {{ container.0 }} /backup/{{ plan.0 }}/{{ container.0 }} {{ '--gzip' if 'gzip' in container.1 and container.1['gzip']  else '' }}"
           }
         }{% if not loop.last %},{% endif %}
         {%endfor-%}
-        {% for hook in plan['hooks'] -%}
+        {% for hook in plan.1['hooks']['success']-%}
         {
           "conditions": [
-            {% for condition in hook['conditions'] -%}
-            "CONDITION_{{ condition }}",
-            {% endfor -%}
+            "CONDITION_SNAPSHOT_END"
           ],
-          "onError": "ON_ERROR_FATAL",
-          "actionCommand": {
-            "command": "{{ hook['actionCommand']['command'] }}"
+          "actionShoutrrr": {
+            "shoutrrrUrl": "{{ hooks[hook]['shoutrrr_url'] }}",
+            {%raw%}"template": "Finished {{ .Task }}\n\n{{ .Summary }}"{%endraw%}
           }
         },
         {% endfor -%}
+        {% for hook in plan.1['hooks']['error']-%}
+        {
+          "conditions": [
+            "CONDITION_ANY_ERROR"
+          ],
+          "actionShoutrrr": {
+            "shoutrrrUrl": "{{ hooks[hook]['shoutrrr_url'] }}",
+            {%raw%}"template": "Error on backup {{ .Task }}\n\n{{ .Summary }}"{%endraw%}
+          }
+        }{% if not loop.last %},{% endif %}
+        {% endfor -%}
       ]
     }{% if not loop.last %},{% endif %}
+    {% endfor -%}
     {% endfor -%}
 
   ],
