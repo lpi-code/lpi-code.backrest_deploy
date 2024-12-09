@@ -52,7 +52,7 @@
     {%for repo in plan.1['repos']-%}
     {
       "id": "{{ plan.0 }}",
-      "repo": "{{ repo.0 }}",
+      "repo": "{{ repo }}",
       "paths": [
         "/backup/{{plan.0}}"
       ],
@@ -96,7 +96,7 @@
           "actionCommand": {
             "command": "/docker_scripts/docker_container_backup.py {{ container.0 }} /backup/{{ plan.0 }}/{{ container.0 }} {{ '--gzip' if 'gzip' in container.1 and container.1['gzip']  else '' }}"
           }
-        }{% if not loop.last %},{% endif %}
+        },
         {%endfor-%}
         {% for hook in plan.1['hooks']['success']-%}
         {
@@ -118,8 +118,16 @@
             "shoutrrrUrl": "{{ hooks[hook]['shoutrrr_url'] }}",
             {%raw%}"template": "Error on backup {{ .Task }}\n\n{{ .Summary }}"{%endraw%}
           }
-        }{% if not loop.last %},{% endif %}
+        },
         {% endfor -%}
+        {
+          "conditions": [
+          ],
+          "onError": "ON_ERROR_FATAL",
+          "actionCommand": {
+            "command": ""
+          }
+        }
       ]
     }{% if not loop.last %},{% endif %}
     {% endfor -%}
