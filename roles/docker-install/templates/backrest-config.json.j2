@@ -1,0 +1,121 @@
+{
+  "modno": 29,
+  "version": 2,
+  "instance": "{{ general['domain'] }}",
+  "repos": [
+    {% for repo in repos.items() -%}
+     {
+      "id": "{{ repo.0 }}",
+      "uri": "{{ repo.1['uri'] }}",
+      "password": "{{ repo.1['password'] }}",
+      "env": [
+        {% for env in repo.1['env'].items() -%}
+        "{{ env.0 }}={{ env.1 }}"{% if not loop.last %},{% endif %}
+        {% endfor -%}
+      ],
+      "prunePolicy": {
+        "maxUnusedPercent": 25
+      },
+      "checkPolicy": {
+        "readDataSubsetPercent": 0
+      },
+      "commandPrefix": {},
+      "hooks": [
+        {% for hook in repo.1['hooks']['success']-%}
+        {
+          "conditions": [
+            "CONDITION_SNAPSHOT_END"
+          ],
+          "actionShoutrrr": {
+            "shoutrrrUrl": "{{ hooks[hook]['shoutrrr_url'] }}",
+            {%raw%}"template": "Finished {{ .Task }}\n\n{{ .Summary }}"{%endraw%}
+          }
+        },
+        {% endfor -%}
+        {% for hook in repo.1['hooks']['error']-%}
+        {
+          "conditions": [
+            "CONDITION_ANY_ERROR"
+          ],
+          "actionShoutrrr": {
+            "shoutrrrUrl": "{{ hooks[hook]['shoutrrr_url'] }}",
+            {%raw%}"template": "Error on backup {{ .Task }}\n\n{{ .Summary }}"{%endraw%}
+          }
+        }{% if not loop.last %},{% endif %}
+        {% endfor -%}
+      ]
+     }{% if not loop.last %},{% endif %}
+    {% endfor -%}
+  ],
+  "plans": [
+    {% for plan in plans.items() -%}
+    {
+      "id": "{{ plan.0 }}",
+      "repo": "{{ plan.1['repo'] }}",
+      "paths": [
+        "/backup/{{plan.0}}"
+      ],
+      {% if plan.1['excludes'] -%}
+      "excludes": [
+        {% for exclude in plan.1['excludes'] -%}
+        "{{ exclude }}",
+        {% endfor -%}
+      ],
+      {% endif -%}
+      "schedule": {
+        "cron": "{{ schedule[plan.1['schedule']]['cron'] }}"
+      },
+      "retention": {
+        "policyTimeBucketed": {
+          "hourly": {{ policy[plan.1['policy']]['hourly'] }},
+          "daily": {{ policy[plan.1['policy']]['daily'] }},
+          "weekly": {{ policy[plan.1['policy']]['weekly'] }},
+          "monthly": {{ policy[plan.1['policy']]['monthly'] }},
+          "yearly": {{ policy[plan.1['policy']]['yearly'] }}
+        }
+      },
+      "hooks": [
+        {% for container in plan.1['containers'].items() -%}
+        {% if 'database' in container.1 -%}
+        {
+          "conditions": [
+            "CONDITION_SNAPSHOT_START"
+          ],
+          "onError": "ON_ERROR_FATAL",
+          "actionCommand": {
+            "command": "/docker_scripts/db_physical_backup.sh {{ container.0 }} {{ container.1['database']['type'] }} /backup/{{ plan.0 }}/database_{{ container.0 }} {{ container.1['database']['user'] }} {{ container.1['database']['password'] }}"
+          }
+        },
+        {% endif -%}
+        {
+          "conditions": [
+            "CONDITION_SNAPSHOT_START"
+          ],
+          "onError": "ON_ERROR_FATAL",
+          "actionCommand": {
+            "command": "/docker_scripts/docker_container_backup.py {{ container.0 }} /backup/{{ plan.0 }}/{{ container.0 }} {{ '--gzip' if container.1['gzip'] else '' }}"
+          }
+        }{% if not loop.last %},{% endif %}
+        {%endfor-%}
+        {% for hook in plan['hooks'] -%}
+        {
+          "conditions": [
+            {% for condition in hook['conditions'] -%}
+            "CONDITION_{{ condition }}",
+            {% endfor -%}
+          ],
+          "onError": "ON_ERROR_FATAL",
+          "actionCommand": {
+            "command": "{{ hook['actionCommand']['command'] }}"
+          }
+        },
+        {% endfor -%}
+      ]
+    }{% if not loop.last %},{% endif %}
+    {% endfor -%}
+
+  ],
+  "auth": {
+    "disabled": true
+  }
+}

@@ -11,17 +11,17 @@ hooks:
  
 policy:
   long_term: # Arbitrary name
-    keep:
-      daily: 7
-      weekly: 4
-      monthly: 12
-      yearly: 5
+    hourly: 24
+    daily: 7
+    weekly: 4
+    monthly: 12
+    yearly: 5
   short_term:
-    keep:
-      daily: 7
-      weekly: 4
-      monthly: 12
-      yearly: 5
+    hourly: 24
+    daily: 7
+    weekly: 4
+    monthly: 12
+    yearly: 5
 
 schedule:
   daily_1am: # Arbitrary name
@@ -58,12 +58,15 @@ plans:
         named_volumes:
           - wordpress_data
       wordpress_mariadb_db:
-        database: false # Backup database
+        database:
+          type: mariadb
+          user: backup
+          password: backuppwd
     containers_db: # List of containers to backup databases (using custom scripts)
       - wordpress_mariadb_db
     other_paths:
       - /opt/wordpress_data
-    hooks:
+    hooks: # You might not want to set up different hooksfor every backup, use hooks on repos instead
       error:
         - telegram
         - discord

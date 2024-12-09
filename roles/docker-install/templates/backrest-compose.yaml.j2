@@ -1,15 +1,15 @@
-version: "3.2"
 services:
   backrest:
     image: lpicode/backrest-docker:latest
     container_name: backrest
     hostname: backrest #Use this to set the hostname instead of container ID to the config.json and WebUI.
     volumes:
+      - {{ docker_socket | default('/var/run/docker.sock') }}:/var/run/docker.sock:rw
       - /etc/localtime:/etc/localtime:ro
-      - backrest/data:/data:rw
-      - backrest/config:/config:rw
-      - backrest/cache:/cache:rw
-      - backrest/ssh:/root/.ssh:rw
+      - backrest_data:/data:rw
+      - backrest_config:/config:rw
+      - backrest_cache:/cache:rw
+      - backrest_ssh:/root/.ssh:rw
 {% for plan in plans.items() -%}
 {% for container in plan[1]['containers'].items() -%}
 {% for volume in container[1]['named_volumes'] -%}
@@ -19,7 +19,7 @@ services:
 {% endfor -%}
 {% endfor -%}
 {% for other_path in plan[1]['other_paths'] %}
-      - {{ other_path }}:/backup/{{ plan[0] }}/other_{{ other_path }}
+      - {{ other_path }}:/backup/{{ plan[0] }}/other_{{ other_path | replace('/', '_') }}
 {% endfor -%}
 {% endfor %}
 
@@ -33,13 +33,16 @@ services:
     user: root:root
 
 volumes:
-    backrest:
+  backrest_data:
+  backrest_config:
+  backrest_cache:
+  backrest_ssh:
 {% for plan in plans.items() -%}
 {% for container in plan[1]['containers'].items() -%}
 {% if 'named_volumes' in container[1] -%}
 {% for volume in container[1]['named_volumes'] %}
-    {{ volume }}:
-      external: true
+  {{ volume }}:
+    external: true
 {% endfor -%}
 {% endif -%}
 {% endfor -%}
